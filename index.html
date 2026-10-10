@@ -287,7 +287,6 @@
       margin-bottom: 16px;
     }
 
-    /* シンプルな選手名リスト */
     .history-simple-item {
       display: flex;
       align-items: center;
@@ -345,7 +344,22 @@
     .btn-pdf { background-color: #ea580c; }
     .btn-img { background-color: #0284c7; }
 
-    /* 出力用スタイル (画面上の通常時は完全に非表示) */
+    /* スマホ画像保存モーダル */
+    .img-preview-container {
+      text-align: center;
+    }
+
+    .img-preview-container img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      margin-top: 10px;
+      user-select: auto;
+      -webkit-user-select: auto;
+    }
+
+    /* 出力用スタイル */
     .export-container {
       display: none;
       background: #ffffff;
@@ -429,12 +443,10 @@
         overflow: visible !important;
       }
 
-      /* 画面用のメイン要素を完全非表示 */
       .top-header, .setting-bar, .main-display, .action-area, .content-container, .modal-overlay {
         display: none !important;
       }
 
-      /* 印刷エリアのみ強制表示 */
       .export-container {
         display: block !important;
         position: absolute !important;
@@ -525,6 +537,20 @@
     </div>
   </div>
 
+  <!-- 画像保存用プレビューモーダル（スマホ対応） -->
+  <div id="imgPreviewModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="color:#38bdf8;">画像が生成されました</h3>
+        <button class="btn-close" id="closeImgPreviewBtn">&times;</button>
+      </div>
+      <div class="modal-body img-preview-container">
+        <p style="font-size:0.85rem; color:var(--text-sub);">画像を長押しして「写真に保存」または共有してください。</p>
+        <div id="imgPreviewResult"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- 出力用レイアウトコンテナ -->
   <div id="exportArea" class="export-container"></div>
 
@@ -557,12 +583,17 @@
     const exportSelectedImgBtn = document.getElementById('exportSelectedImgBtn');
     const exportArea = document.getElementById('exportArea');
 
+    const imgPreviewModal = document.getElementById('imgPreviewModal');
+    const closeImgPreviewBtn = document.getElementById('closeImgPreviewBtn');
+    const imgPreviewResult = document.getElementById('imgPreviewResult');
+
     // モーダル開閉
     openHistoryBtn.addEventListener('click', () => {
       renderModalHistory();
       historyModal.style.display = 'flex';
     });
     closeHistoryBtn.addEventListener('click', () => { historyModal.style.display = 'none'; });
+    closeImgPreviewBtn.addEventListener('click', () => { imgPreviewModal.style.display = 'none'; });
 
     // 距離切り替え
     distanceSelect.addEventListener('change', (e) => {
@@ -827,7 +858,7 @@
       return html;
     }
 
-    // PDF（印刷）出力（画像出力後でも確実に印刷領域が表示されるようスタイルクリーンアップを追加）
+    // PDF（印刷）出力
     exportSelectedPdfBtn.addEventListener('click', () => {
       const html = generateExportHTML();
       if (!html) {
@@ -835,7 +866,7 @@
         return;
       }
       
-      exportArea.removeAttribute('style'); // 画像出力時のインラインスタイルを完全削除
+      exportArea.removeAttribute('style');
       exportArea.innerHTML = html;
       
       setTimeout(() => {
@@ -843,7 +874,7 @@
       }, 50);
     });
 
-    // 画像（PNG）出力（出力完了後にスタイルを完全に初期化）
+    // 画像（PNG）出力（スマホでの長押し保存に対応）
     exportSelectedImgBtn.addEventListener('click', () => {
       const html = generateExportHTML();
       if (!html) {
@@ -864,13 +895,24 @@
           backgroundColor: "#ffffff",
           scale: 2
         }).then(canvas => {
-          // 画像出力完了後にインラインスタイルを完全削除してクリーンアップ
           exportArea.removeAttribute('style');
+          const imgData = canvas.toDataURL('image/png');
 
-          const link = document.createElement('a');
-          link.download = 'ショートトラック_ラップ記録_一括.png';
-          link.href = canvas.toDataURL('image/png');
-          link.click();
+          // スマホ判定または代替表示
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+          if (isMobile) {
+            // スマホの場合はプレビューモーダルで表示して長押し保存させる
+            imgPreviewResult.innerHTML = `<img src="${imgData}" alt="ラップ記録">`;
+            historyModal.style.display = 'none';
+            imgPreviewModal.style.display = 'flex';
+          } else {
+            // PCの場合は直接ダウンロード
+            const link = document.createElement('a');
+            link.download = 'ショートトラック_ラップ記録_一括.png';
+            link.href = imgData;
+            link.click();
+          }
         }).catch(() => {
           exportArea.removeAttribute('style');
         });
