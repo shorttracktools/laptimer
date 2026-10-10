@@ -343,7 +343,7 @@
     .btn-pdf { background-color: #ea580c; }
     .btn-csv { background-color: #059669; }
 
-    /* 印刷/PDF専用スタイル：スマホでの黒枠背景漏れを完全修正 */
+    /* 印刷/PDF専用スタイル：A4横4列並び */
     .print-only-container {
       display: none;
     }
@@ -354,7 +354,6 @@
         margin: 8mm;
       }
 
-      /* html, body 全体の背景を白に強制固定 */
       html, body {
         background-color: #ffffff !important;
         color: #000000 !important;
@@ -363,7 +362,6 @@
         overflow: visible !important;
       }
 
-      /* 印刷エリア以外のすべてのWeb要素をレイアウトから完全に消去 */
       .top-header, .setting-bar, .main-display, .action-area, .content-container, .modal-overlay {
         display: none !important;
       }
@@ -403,12 +401,23 @@
         font-size: 8.5pt;
         border-bottom: 1px solid #000;
         padding-bottom: 2px;
-        margin-bottom: 3px;
+        margin-bottom: 2px;
         text-align: center;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         color: #000000 !important;
+      }
+
+      .print-card-total {
+        font-weight: bold;
+        font-size: 8pt;
+        border-bottom: 1px solid #000;
+        padding-bottom: 2px;
+        margin-bottom: 3px;
+        text-align: center;
+        color: #000000 !important;
+        font-family: monospace;
       }
 
       .print-table {
@@ -722,6 +731,7 @@
         savedHistories.unshift({
           id: Date.now(),
           name: runnerName,
+          totalTime: formatTime(elapsedTime),
           records: [...lapRecords]
         });
       }
@@ -773,7 +783,7 @@
       renderModalHistory();
     };
 
-    // 選択項目をPDF（印刷）出力（古い記録順・横4列並び・背景完全白固定）
+    // 選択項目をPDF（印刷）出力（古い記録順・横4列並び・合計タイム付き）
     exportSelectedPdfBtn.addEventListener('click', () => {
       const selectedIds = Array.from(document.querySelectorAll('.history-checkbox:checked')).map(cb => parseInt(cb.dataset.id));
       
@@ -791,6 +801,7 @@
         html += `
           <div class="print-card">
             <div class="print-card-title">${item.name}</div>
+            <div class="print-card-total">タイム: ${item.totalTime}</div>
             <table class="print-table">
               <thead>
                 <tr>
@@ -829,10 +840,10 @@
         return;
       }
 
-      let csv = "選手名,残り周数,ラップタイム\n";
+      let csv = "選手名,合計タイム,残り周数,ラップタイム\n";
       selectedHistories.forEach(item => {
         item.records.forEach(r => {
-          csv += `${item.name},${formatLaps(r.remainingVal)},${formatLapTime(r.lapTime)}\n`;
+          csv += `${item.name},${item.totalTime},${formatLaps(r.remainingVal)},${formatLapTime(r.lapTime)}\n`;
         });
       });
 
