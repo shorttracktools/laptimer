@@ -6,6 +6,8 @@
   <title>ショートトラック ラップタイマー</title>
   <!-- Chart.js (グラフ描画) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- html2canvas (画像化ライブラリ) -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <style>
     :root {
       --bg-color: #0f172a;
@@ -341,13 +343,79 @@
     }
 
     .btn-pdf { background-color: #ea580c; }
-    .btn-csv { background-color: #059669; }
+    .btn-img { background-color: #0284c7; }
 
-    /* 印刷/PDF専用スタイル：A4横4列並び */
-    .print-only-container {
+    /* 出力用スタイル (画面上の通常時は完全に非表示) */
+    .export-container {
       display: none;
+      background: #ffffff;
+      color: #000000;
+      font-family: sans-serif;
+      padding: 12px;
+      box-sizing: border-box;
+      width: 100%;
     }
 
+    .export-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      align-items: start;
+      width: 100%;
+    }
+
+    .export-card {
+      border: 1px solid #000;
+      border-radius: 4px;
+      padding: 6px;
+      box-sizing: border-box;
+      background: #ffffff;
+    }
+
+    .export-card-title {
+      font-weight: bold;
+      font-size: 9pt;
+      border-bottom: 1px solid #000;
+      padding-bottom: 2px;
+      margin-bottom: 2px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #000000;
+    }
+
+    .export-card-total {
+      font-weight: bold;
+      font-size: 8.5pt;
+      border-bottom: 1px solid #000;
+      padding-bottom: 2px;
+      margin-bottom: 4px;
+      text-align: center;
+      color: #000000;
+      font-family: monospace;
+    }
+
+    .export-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8pt;
+      background: #ffffff;
+    }
+
+    .export-table th, .export-table td {
+      border-bottom: 1px dotted #aaa;
+      text-align: center;
+      padding: 2px 0;
+      color: #000000;
+    }
+
+    .export-table th {
+      font-weight: bold;
+      border-bottom: 1px solid #000;
+    }
+
+    /* 印刷/PDF専用定義 */
     @media print {
       @page {
         size: A4 portrait;
@@ -358,85 +426,23 @@
         background-color: #ffffff !important;
         color: #000000 !important;
         height: auto !important;
-        min-height: 100% !important;
         overflow: visible !important;
       }
 
+      /* 画面用のメイン要素を完全非表示 */
       .top-header, .setting-bar, .main-display, .action-area, .content-container, .modal-overlay {
         display: none !important;
       }
 
-      .print-only-container {
+      /* 印刷エリアのみ強制表示 */
+      .export-container {
         display: block !important;
-        position: relative !important;
+        position: absolute !important;
         left: 0 !important;
         top: 0 !important;
         width: 100% !important;
         background: #ffffff !important;
         color: #000000 !important;
-        font-family: sans-serif;
-        padding: 0;
-      }
-
-      .print-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 6px;
-        align-items: start;
-        width: 100%;
-      }
-
-      .print-card {
-        border: 1px solid #000;
-        border-radius: 3px;
-        padding: 4px;
-        box-sizing: border-box;
-        page-break-inside: avoid;
-        break-inside: avoid;
-        background: #ffffff !important;
-      }
-
-      .print-card-title {
-        font-weight: bold;
-        font-size: 8.5pt;
-        border-bottom: 1px solid #000;
-        padding-bottom: 2px;
-        margin-bottom: 2px;
-        text-align: center;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: #000000 !important;
-      }
-
-      .print-card-total {
-        font-weight: bold;
-        font-size: 8pt;
-        border-bottom: 1px solid #000;
-        padding-bottom: 2px;
-        margin-bottom: 3px;
-        text-align: center;
-        color: #000000 !important;
-        font-family: monospace;
-      }
-
-      .print-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 7.5pt;
-        background: #ffffff !important;
-      }
-
-      .print-table th, .print-table td {
-        border-bottom: 1px dotted #aaa;
-        text-align: center;
-        padding: 1px 0;
-        color: #000000 !important;
-      }
-
-      .print-table th {
-        font-weight: bold;
-        border-bottom: 1px solid #000;
       }
     }
   </style>
@@ -514,13 +520,13 @@
       <div id="modalHistoryList" class="modal-body"></div>
       <div class="modal-footer">
         <button class="btn-action btn-pdf" id="exportSelectedPdfBtn">選択項目をPDF出力</button>
-        <button class="btn-action btn-csv" id="exportSelectedCsvBtn">選択項目をCSV出力</button>
+        <button class="btn-action btn-img" id="exportSelectedImgBtn">選択項目を画像出力</button>
       </div>
     </div>
   </div>
 
-  <!-- PDF/印刷専用出力エリア (画面上は非表示) -->
-  <div id="printArea" class="print-only-container"></div>
+  <!-- 出力用レイアウトコンテナ -->
+  <div id="exportArea" class="export-container"></div>
 
   <script>
     let startTime = 0, elapsedTime = 0, timerInterval = null, isRunning = false;
@@ -548,8 +554,8 @@
     const modalHistoryList = document.getElementById('modalHistoryList');
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
     const exportSelectedPdfBtn = document.getElementById('exportSelectedPdfBtn');
-    const exportSelectedCsvBtn = document.getElementById('exportSelectedCsvBtn');
-    const printArea = document.getElementById('printArea');
+    const exportSelectedImgBtn = document.getElementById('exportSelectedImgBtn');
+    const exportArea = document.getElementById('exportArea');
 
     // モーダル開閉
     openHistoryBtn.addEventListener('click', () => {
@@ -748,7 +754,7 @@
       updateLapsRemaining();
     });
 
-    // モーダル内のシンプルリスト描画（名前のみ）
+    // モーダル描画
     function renderModalHistory() {
       modalHistoryList.innerHTML = '';
       if (savedHistories.length === 0) {
@@ -783,26 +789,22 @@
       renderModalHistory();
     };
 
-    // 選択項目をPDF（印刷）出力（古い記録順・横4列並び・合計タイム付き）
-    exportSelectedPdfBtn.addEventListener('click', () => {
+    // 出力用HTML構築
+    function generateExportHTML() {
       const selectedIds = Array.from(document.querySelectorAll('.history-checkbox:checked')).map(cb => parseInt(cb.dataset.id));
-      
       const selectedHistories = savedHistories
         .filter(h => selectedIds.includes(h.id))
         .sort((a, b) => a.id - b.id);
 
-      if (selectedHistories.length === 0) {
-        alert('出力する記録を選択してください');
-        return;
-      }
+      if (selectedHistories.length === 0) return null;
 
-      let html = '<div class="print-grid">';
+      let html = '<div class="export-grid">';
       selectedHistories.forEach(item => {
         html += `
-          <div class="print-card">
-            <div class="print-card-title">${item.name}</div>
-            <div class="print-card-total">タイム: ${item.totalTime}</div>
-            <table class="print-table">
+          <div class="export-card">
+            <div class="export-card-title">${item.name}</div>
+            <div class="export-card-total">タイム: ${item.totalTime}</div>
+            <table class="export-table">
               <thead>
                 <tr>
                   <th>残り周数</th>
@@ -822,36 +824,57 @@
         `;
       });
       html += '</div>';
+      return html;
+    }
 
-      printArea.innerHTML = html;
-      window.print();
+    // PDF（印刷）出力（画像出力後でも確実に印刷領域が表示されるようスタイルクリーンアップを追加）
+    exportSelectedPdfBtn.addEventListener('click', () => {
+      const html = generateExportHTML();
+      if (!html) {
+        alert('出力する記録を選択してください');
+        return;
+      }
+      
+      exportArea.removeAttribute('style'); // 画像出力時のインラインスタイルを完全削除
+      exportArea.innerHTML = html;
+      
+      setTimeout(() => {
+        window.print();
+      }, 50);
     });
 
-    // 選択項目をCSV出力
-    exportSelectedCsvBtn.addEventListener('click', () => {
-      const selectedIds = Array.from(document.querySelectorAll('.history-checkbox:checked')).map(cb => parseInt(cb.dataset.id));
-      
-      const selectedHistories = savedHistories
-        .filter(h => selectedIds.includes(h.id))
-        .sort((a, b) => a.id - b.id);
-
-      if (selectedHistories.length === 0) {
+    // 画像（PNG）出力（出力完了後にスタイルを完全に初期化）
+    exportSelectedImgBtn.addEventListener('click', () => {
+      const html = generateExportHTML();
+      if (!html) {
         alert('出力する記録を選択してください');
         return;
       }
 
-      let csv = "選手名,合計タイム,残り周数,ラップタイム\n";
-      selectedHistories.forEach(item => {
-        item.records.forEach(r => {
-          csv += `${item.name},${item.totalTime},${formatLaps(r.remainingVal)},${formatLapTime(r.lapTime)}\n`;
-        });
-      });
+      exportArea.innerHTML = html;
+      exportArea.style.display = "block";
+      exportArea.style.position = "fixed";
+      exportArea.style.left = "0px";
+      exportArea.style.top = "0px";
+      exportArea.style.zIndex = "-9999";
+      exportArea.style.width = "800px";
 
-      const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = `ショートトラック_ラップ記録_一括.csv`;
-      link.click();
+      setTimeout(() => {
+        html2canvas(exportArea, {
+          backgroundColor: "#ffffff",
+          scale: 2
+        }).then(canvas => {
+          // 画像出力完了後にインラインスタイルを完全削除してクリーンアップ
+          exportArea.removeAttribute('style');
+
+          const link = document.createElement('a');
+          link.download = 'ショートトラック_ラップ記録_一括.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        }).catch(() => {
+          exportArea.removeAttribute('style');
+        });
+      }, 50);
     });
   </script>
 </body>
