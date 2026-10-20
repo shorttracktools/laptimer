@@ -325,24 +325,25 @@
 
     .modal-footer {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       border-top: 1px solid #334155;
       padding-top: 12px;
     }
 
     .btn-action {
       flex: 1;
-      padding: 10px;
+      padding: 10px 6px;
       border-radius: 8px;
       border: none;
       font-weight: bold;
       color: white;
       cursor: pointer;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
 
     .btn-pdf { background-color: #ea580c; }
     .btn-img { background-color: #0284c7; }
+    .btn-clear-all { background-color: #dc2626; flex: 0.7; }
 
     /* スマホ画像保存モーダル */
     .img-preview-container {
@@ -531,8 +532,9 @@
       </div>
       <div id="modalHistoryList" class="modal-body"></div>
       <div class="modal-footer">
-        <button class="btn-action btn-pdf" id="exportSelectedPdfBtn">選択項目をPDF出力</button>
-        <button class="btn-action btn-img" id="exportSelectedImgBtn">選択項目を画像出力</button>
+        <button class="btn-action btn-pdf" id="exportSelectedPdfBtn">PDF出力</button>
+        <button class="btn-action btn-img" id="exportSelectedImgBtn">画像出力</button>
+        <button class="btn-action btn-clear-all" id="clearAllHistoryBtn">全削除</button>
       </div>
     </div>
   </div>
@@ -555,6 +557,8 @@
   <div id="exportArea" class="export-container"></div>
 
   <script>
+    const STORAGE_KEY = 'shorttrack_lap_histories';
+
     let startTime = 0, elapsedTime = 0, timerInterval = null, isRunning = false;
     let lapStartTime = 0, totalLaps = 9.0, completedLaps = 0;
     let lapRecords = [];
@@ -581,11 +585,34 @@
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
     const exportSelectedPdfBtn = document.getElementById('exportSelectedPdfBtn');
     const exportSelectedImgBtn = document.getElementById('exportSelectedImgBtn');
+    const clearAllHistoryBtn = document.getElementById('clearAllHistoryBtn');
     const exportArea = document.getElementById('exportArea');
 
     const imgPreviewModal = document.getElementById('imgPreviewModal');
     const closeImgPreviewBtn = document.getElementById('closeImgPreviewBtn');
     const imgPreviewResult = document.getElementById('imgPreviewResult');
+
+    // 初期化：ローカルストレージから履歴読み込み
+    function loadSavedHistories() {
+      try {
+        const rawData = localStorage.getItem(STORAGE_KEY);
+        if (rawData) {
+          savedHistories = JSON.parse(rawData);
+        }
+      } catch (e) {
+        console.error('Failed to load histories:', e);
+      }
+    }
+
+    function saveHistoriesToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(savedHistories));
+      } catch (e) {
+        console.error('Failed to save histories:', e);
+      }
+    }
+
+    loadSavedHistories();
 
     // モーダル開閉
     openHistoryBtn.addEventListener('click', () => {
@@ -771,6 +798,7 @@
           totalTime: formatTime(elapsedTime),
           records: [...lapRecords]
         });
+        saveHistoriesToStorage(); // ストレージ保存
       }
 
       stopTimer();
@@ -812,13 +840,26 @@
 
     window.updateHistoryName = function(id, newName) {
       const item = savedHistories.find(h => h.id === id);
-      if (item) item.name = newName;
+      if (item) {
+        item.name = newName;
+        saveHistoriesToStorage(); // 名前編集時にも保存
+      }
     };
 
     window.deleteHistory = function(id) {
       savedHistories = savedHistories.filter(h => h.id !== id);
+      saveHistoriesToStorage(); // 削除時にも保存
       renderModalHistory();
     };
+
+    clearAllHistoryBtn.addEventListener('click', () => {
+      if (savedHistories.length === 0) return;
+      if (confirm('すべての履歴を削除してもよろしいですか？')) {
+        savedHistories = [];
+        saveHistoriesToStorage();
+        renderModalHistory();
+      }
+    });
 
     // 出力用HTML構築
     function generateExportHTML() {
@@ -874,7 +915,7 @@
       }, 50);
     });
 
-    // 画像（PNG）出力（スマホでの長押し保存に対応）
+    // 画像（PNG）出力
     exportSelectedImgBtn.addEventListener('click', () => {
       const html = generateExportHTML();
       if (!html) {
@@ -898,16 +939,13 @@
           exportArea.removeAttribute('style');
           const imgData = canvas.toDataURL('image/png');
 
-          // スマホ判定または代替表示
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
           if (isMobile) {
-            // スマホの場合はプレビューモーダルで表示して長押し保存させる
             imgPreviewResult.innerHTML = `<img src="${imgData}" alt="ラップ記録">`;
             historyModal.style.display = 'none';
             imgPreviewModal.style.display = 'flex';
           } else {
-            // PCの場合は直接ダウンロード
             const link = document.createElement('a');
             link.download = 'ショートトラック_ラップ記録_一括.png';
             link.href = imgData;
