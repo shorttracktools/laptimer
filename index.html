@@ -877,7 +877,7 @@
         html += `
           <div class="export-card">
             <div class="export-card-title">${item.name}</div>
-            <div class="export-card-total">タイム: ${item.totalTime}</div>
+            <div class="export-card-total">Total : ${item.totalTime}</div>
             <table class="export-table">
               <thead>
                 <tr>
@@ -949,7 +949,7 @@
             imgPreviewModal.style.display = 'flex';
           } else {
             const link = document.createElement('a');
-            link.download = 'ショートトラック_ラップ記録_一括.png';
+            link.download = 'ラップ記録.png';
             link.href = imgData;
             link.click();
           }
