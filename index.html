@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>ショートトラック ラップタイマー</title>
+  <title>ShortTrack LapTimer</title>
   <!-- Chart.js (グラフ描画) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- html2canvas (画像化ライブラリ) -->
@@ -464,13 +464,13 @@
 
   <!-- トップバー -->
   <div class="top-header">
-    <div class="app-title">ショートトラック タイマー</div>
+    <div class="app-title">ShortTrack LapTimer</div>
     <button class="btn-history-toggle" id="openHistoryBtn">過去の記録 📁</button>
   </div>
 
   <!-- 設定・選手名バー -->
   <div class="setting-bar">
-    <input type="text" id="runnerName" class="input-field runner-name-input" placeholder="選手名を入力 (例: 山田太郎)">
+    <input type="text" id="runnerName" class="input-field runner-name-input" placeholder="選手名 (例: 山田太一)">
     <select id="distanceSelect" class="distance-select">
       <option value="4.5">500m (4.5周)</option>
       <option value="9" selected>1000m (9周)</option>
@@ -484,8 +484,8 @@
 
   <!-- タイマー・残り周数 -->
   <div class="main-display">
-    <div class="laps-remaining-label">LAPS REMAINING</div>
-    <div id="lapsRemaining" class="laps-remaining-value">9.0</div>
+    <div class="laps-remaining-label">LAPS TO GO</div>
+    <div id="lapsRemaining" class="laps-remaining-value">9</div>
     <div id="totalTimeDisplay" class="total-time">00:00.00</div>
     <div id="currentLapDisplay" class="current-lap-time">LAP: 00.00</div>
   </div>
@@ -495,7 +495,7 @@
     <button id="lapBtn" class="btn-lap" disabled>LAP</button>
     <div class="sub-controls">
       <button id="startStopBtn" class="btn-control btn-start">START</button>
-      <button id="resetBtn" class="btn-control btn-reset">保存 ＆ RESET</button>
+      <button id="resetBtn" class="btn-control btn-reset">SAVE ＆ RESET</button>
     </div>
   </div>
 
