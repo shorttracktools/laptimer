@@ -764,7 +764,7 @@
       const ctx = document.getElementById('lapChart').getContext('2d');
       if (chartInstance) chartInstance.destroy();
 
-      const labels = lapRecords.map(r => `残り${formatLaps(r.remainingVal)}`);
+      const labels = lapRecords.map(r => `${formatLaps(r.remainingVal)}`);
       const data = lapRecords.map(r => (r.lapTime / 1000).toFixed(2));
 
       chartInstance = new Chart(ctx, {
@@ -772,7 +772,6 @@
         data: {
           labels: labels,
           datasets: [{
-            label: 'ラップタイム (秒)',
             data: data,
             borderColor: '#38bdf8',
             backgroundColor: 'rgba(56, 189, 248, 0.2)',
@@ -783,7 +782,10 @@
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          scales: { y: { title: { display: true, text: '秒' } } }
+          plugins: {legend: {display: false}},
+          scales: { 
+            x: {title: { display: true, text: '残り周数'}},
+            y: { title: { display: true, text: '秒' } } }
         }
       });
     }
