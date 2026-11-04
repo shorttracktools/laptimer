@@ -571,7 +571,7 @@
     let lapRecords = [];
     let savedHistories = [];
     let chartInstance = null;
-    let hasStarted = false; // スタート済みフラグ
+    let hasStarted = false;
 
     // DOM
     const runnerNameInput = document.getElementById('runnerName');
@@ -657,7 +657,6 @@
       if (totalLaps === 0) {
         lapsRemainingDisplay.textContent = '∞';
       } else {
-        // スタート前は設定値そのまま、スタート後はショートトラック式に -1（ラスト1周で0）
         let remaining = totalLaps - completedLaps;
         if (hasStarted) {
           remaining = Math.max(0, remaining - 1);
@@ -692,7 +691,7 @@
       if (!isRunning) {
         if (totalLaps > 0 && completedLaps >= totalLaps) return;
         isRunning = true;
-        hasStarted = true; // 初回スタート時に残り表示を-1へ切り替え
+        hasStarted = true;
         startTime = Date.now() - elapsedTime;
         if (lapRecords.length === 0) {
           lapStartTime = startTime;
@@ -744,11 +743,11 @@
       }
 
       completedLaps += lapDist;
-      // 記録テーブル・出力用の残り表示値もメイン表示と同様にラスト1周で0になるよう計算
-      let remainingDisplayVal = totalLaps > 0 ? Math.max(0, (totalLaps - completedLaps) - 1) : 0;
+      // 走破した時点で残っている周回数（9周なら1周走破で残り8、最終周走破で残り0）
+      const remainingAtRecord = totalLaps > 0 ? Math.max(0, totalLaps - completedLaps) : 0;
 
       lapRecords.push({
-        remainingVal: remainingDisplayVal,
+        remainingVal: remainingAtRecord,
         lapTime: lapTime,
         accumTime: elapsedTime,
         isHalf: lapDist === 0.5
@@ -835,14 +834,14 @@
           totalTime: formatTime(elapsedTime),
           records: [...lapRecords]
         });
-        saveHistoriesToStorage(); // ストレージ保存
+        saveHistoriesToStorage();
       }
 
       stopTimer();
       elapsedTime = 0;
       completedLaps = 0;
-      hasStarted = false; // スタートフラグを初期化
-      runnerNameInput.value = ''; // 選手名をリセット
+      hasStarted = false;
+      runnerNameInput.value = '';
       lapRecords = [];
       totalTimeDisplay.textContent = '00:00.00';
       currentLapDisplay.textContent = 'LAP: 00.00';
@@ -882,13 +881,13 @@
       const item = savedHistories.find(h => h.id === id);
       if (item) {
         item.name = newName;
-        saveHistoriesToStorage(); // 名前編集時にも保存
+        saveHistoriesToStorage();
       }
     };
 
     window.deleteHistory = function(id) {
       savedHistories = savedHistories.filter(h => h.id !== id);
-      saveHistoriesToStorage(); // 削除時にも保存
+      saveHistoriesToStorage();
       renderModalHistory();
     };
 
