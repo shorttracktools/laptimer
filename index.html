@@ -371,6 +371,13 @@
       width: 100%;
     }
 
+    .export-date-header {
+      font-size: 8pt;
+      color: #333333;
+      margin-bottom: 4px;
+      text-align: left;
+    }
+
     .export-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -564,6 +571,7 @@
     let lapRecords = [];
     let savedHistories = [];
     let chartInstance = null;
+    let hasStarted = false; // スタート済みフラグ
 
     // DOM
     const runnerNameInput = document.getElementById('runnerName');
@@ -632,11 +640,13 @@
         totalLaps = parseFloat(e.target.value);
       }
       updateLapsRemaining();
+      updateLapButtonLabel();
     });
 
     customLapsInput.addEventListener('input', (e) => {
       totalLaps = parseFloat(e.target.value) || 0;
       updateLapsRemaining();
+      updateLapButtonLabel();
     });
 
     function formatLaps(val) {
@@ -647,8 +657,20 @@
       if (totalLaps === 0) {
         lapsRemainingDisplay.textContent = '∞';
       } else {
-        const remaining = Math.max(0, totalLaps - completedLaps);
+        // スタート前は設定値そのまま、スタート後はショートトラック式に -1（ラスト1周で0）
+        let remaining = totalLaps - completedLaps;
+        if (hasStarted) {
+          remaining = Math.max(0, remaining - 1);
+        }
         lapsRemainingDisplay.textContent = formatLaps(remaining);
+      }
+    }
+
+    function updateLapButtonLabel() {
+      if (totalLaps > 0 && (totalLaps - completedLaps) <= 1.0) {
+        lapBtn.textContent = 'FINISH';
+      } else {
+        lapBtn.textContent = 'LAP';
       }
     }
 
@@ -670,6 +692,7 @@
       if (!isRunning) {
         if (totalLaps > 0 && completedLaps >= totalLaps) return;
         isRunning = true;
+        hasStarted = true; // 初回スタート時に残り表示を-1へ切り替え
         startTime = Date.now() - elapsedTime;
         if (lapRecords.length === 0) {
           lapStartTime = startTime;
@@ -682,8 +705,14 @@
         startStopBtn.className = 'btn-control btn-stop';
         lapBtn.disabled = false;
         distanceSelect.disabled = true;
+        updateLapsRemaining();
+        updateLapButtonLabel();
       } else {
-        stopTimer();
+        if (totalLaps > 0 && (totalLaps - completedLaps) <= 1.0) {
+          recordLap();
+        } else {
+          stopTimer();
+        }
       }
     });
 
@@ -703,8 +732,7 @@
       currentLapDisplay.textContent = `LAP: ${formatLapTime(currentLapTime)}`;
     }
 
-    // ラップボタン押し下げ
-    lapBtn.addEventListener('click', () => {
+    function recordLap() {
       if (!isRunning) return;
 
       const now = Date.now();
@@ -716,10 +744,11 @@
       }
 
       completedLaps += lapDist;
-      const remaining = Math.max(0, totalLaps - completedLaps);
+      // 記録テーブル・出力用の残り表示値もメイン表示と同様にラスト1周で0になるよう計算
+      let remainingDisplayVal = totalLaps > 0 ? Math.max(0, (totalLaps - completedLaps) - 1) : 0;
 
       lapRecords.push({
-        remainingVal: remaining,
+        remainingVal: remainingDisplayVal,
         lapTime: lapTime,
         accumTime: elapsedTime,
         isHalf: lapDist === 0.5
@@ -728,12 +757,18 @@
       lapStartTime = now;
       renderRecords();
       updateLapsRemaining();
+      updateLapButtonLabel();
 
       if (totalLaps > 0 && completedLaps >= totalLaps) {
         stopTimer();
         currentLapDisplay.textContent = 'FINISH!';
         showChart();
       }
+    }
+
+    // ラップボタン押し下げ
+    lapBtn.addEventListener('click', () => {
+      recordLap();
     });
 
     function renderRecords() {
@@ -806,6 +841,8 @@
       stopTimer();
       elapsedTime = 0;
       completedLaps = 0;
+      hasStarted = false; // スタートフラグを初期化
+      runnerNameInput.value = ''; // 選手名をリセット
       lapRecords = [];
       totalTimeDisplay.textContent = '00:00.00';
       currentLapDisplay.textContent = 'LAP: 00.00';
@@ -813,6 +850,7 @@
       chartCard.style.display = 'none';
       distanceSelect.disabled = false;
       updateLapsRemaining();
+      updateLapButtonLabel();
     });
 
     // モーダル描画
@@ -872,7 +910,14 @@
 
       if (selectedHistories.length === 0) return null;
 
-      let html = '<div class="export-grid">';
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const dateStr = `${y}/${m}/${d}`;
+
+      let html = `<div class="export-date-header">${dateStr}</div>`;
+      html += '<div class="export-grid">';
       selectedHistories.forEach(item => {
         html += `
           <div class="export-card">
