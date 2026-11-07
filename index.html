@@ -659,7 +659,11 @@
       } else {
         let remaining = totalLaps - completedLaps;
         if (hasStarted) {
-          remaining = Math.max(0, remaining - 1);
+          if (completedLaps === 0 && (totalLaps % 1 === 0.5)) {
+            remaining = Math.max(0, remaining - 0.5);
+          } else {
+            remaining = Math.max(0, remaining - 1);
+          }
         }
         lapsRemainingDisplay.textContent = formatLaps(remaining);
       }
@@ -743,7 +747,7 @@
       }
 
       completedLaps += lapDist;
-      // 走破した時点で残っている周回数（9周なら1周走破で残り8、最終周走破で残り0）
+      // 走破した時点で残っている周回数（4.5周なら半周通過で残り4、ラスト1周走破で残り0）
       const remainingAtRecord = totalLaps > 0 ? Math.max(0, totalLaps - completedLaps) : 0;
 
       lapRecords.push({
